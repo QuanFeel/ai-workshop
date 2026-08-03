@@ -40,7 +40,7 @@ flowchart LR
 克隆仓库：
 
 ```bash
-git clone https://gitee.com/zhongwangquan/ai-workshop.git
+git clone https://github.com/zhongwangquan/ai-workshop.git
 cd ai-workshop/feishu-skill-hub
 ```
 
