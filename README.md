@@ -17,4 +17,4 @@
 
 ## 许可证
 
-各项目单独声明许可证。`feishu-skill-hub/` 使用 MIT License；未单独声明许可证的目录不自动继承该许可。
+本仓库及其中的所有项目统一采用 [MIT License](./LICENSE)。
