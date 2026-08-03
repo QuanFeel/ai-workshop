@@ -1,0 +1,4 @@
+interface:
+  display_name: "飞书 CLI"
+  short_description: "安装、配置、授权并安全使用官方飞书 CLI"
+  default_prompt: "Use $feishu-cli to install or verify lark-cli, select the correct profile, complete OAuth, and safely perform the requested Feishu operation."

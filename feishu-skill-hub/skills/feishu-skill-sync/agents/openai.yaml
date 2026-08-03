@@ -1,0 +1,4 @@
+interface:
+  display_name: "飞书AgentSkill同步"
+  short_description: "在飞书知识库中发布、比较和拉取通用 Agent Skill"
+  default_prompt: "Use $feishu-skill-sync to sync a local Agent Skill folder with my confirmed lark-cli profile and Feishu knowledge-base skills directory."
