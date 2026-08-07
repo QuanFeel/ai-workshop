@@ -2,11 +2,10 @@
 
 把飞书知识库作为团队内部的 Skill 中心库，让 Codex、OpenClaw、Hermes、Coze 等 Agent 能够发布、发现、安装和更新同一份标准 Skill 文件夹。
 
-本项目包含两个职责分离的 Agent Skills：
+本项目交付一个 Agent Skill：
 
 | Skill | 职责 |
 | --- | --- |
-| `feishu-cli` | 安装、配置并安全使用官方 `lark-cli`，管理 Profile 和通用 OAuth 操作 |
 | `feishu-skill-sync` | 绑定知识库目录，打包完整 Skill，执行版本门禁、发布、拉取和安装验证 |
 
 项目不包含飞书 CLI 可执行文件、App Secret、Token、Profile、知识库 Token 或任何本机缓存。
@@ -44,11 +43,10 @@ git clone https://github.com/zhongwangquan/ai-workshop.git
 cd ai-workshop/feishu-skill-hub
 ```
 
-把两个 Skill 复制到当前 Agent 的全局 Skills 目录。下面以通用目录 `~/.agents/skills` 为例：
+把 `feishu-skill-sync` 复制到当前 Agent 的全局 Skills 目录。下面以通用目录 `~/.agents/skills` 为例：
 
 ```bash
 mkdir -p ~/.agents/skills
-cp -R skills/feishu-cli ~/.agents/skills/
 cp -R skills/feishu-skill-sync ~/.agents/skills/
 ```
 
@@ -56,7 +54,7 @@ cp -R skills/feishu-skill-sync ~/.agents/skills/
 
 ## 首次配置
 
-先安装并验证官方 CLI：
+`feishu-skill-sync` 检测到缺少官方 CLI 时，会返回下面的安装与配置指引，不需要再安装一个辅助 Skill。也可以先手动安装并验证：
 
 ```bash
 npx @larksuite/cli@latest install
@@ -70,7 +68,7 @@ lark-cli profile list
 lark-cli config init --new --name "<profile-name>"
 ```
 
-然后由 `feishu-skill-sync` 发起同步所需的一次最小权限 OAuth。不要先让 `feishu-cli` 运行通用 `auth login --recommend`：
+然后由 `feishu-skill-sync` 发起同步所需的一次最小权限 OAuth。不要预先运行通用 `auth login --recommend`：
 
 ```bash
 SYNC="$HOME/.agents/skills/feishu-skill-sync/scripts/skill_sync.py"
@@ -126,7 +124,7 @@ python3 "$SYNC" pull \
 - ZIP 拒绝绝对路径、`..` 路径和符号链接；安装升级保留临时备份，失败时恢复原目录。
 - 删除、降级、回滚、权限成员管理和未确认写入不在本项目范围内。
 
-更多行为约束以两个 Skill 自身的 `SKILL.md` 为准。
+更多行为约束以 `feishu-skill-sync` 自身的 `SKILL.md` 为准。
 
 ## 验证
 
@@ -136,7 +134,7 @@ python3 "$SYNC" pull \
 python3 scripts/verify.py
 ```
 
-它会运行 `feishu-skill-sync` 的单元测试、Python 编译、两个 Skill 的本地解析检查，以及可用时的 Ruff 检查。当前公开版本本地验证结果为 58 项测试通过。
+它会运行 `feishu-skill-sync` 的单元测试、Python 编译、本地解析检查，以及可用时的 Ruff 检查。当前公开版本本地验证结果为 58 项测试通过。
 
 真实飞书发布和拉取依赖用户自己的 Profile、权限和知识库，因此不会被自动测试伪装成已经联调成功。
 
@@ -146,4 +144,4 @@ python3 scripts/verify.py
 
 ## 许可证
 
-本目录及其两个 Skill 使用 [MIT License](./LICENSE)。官方 `lark-cli` 是外部依赖，不包含在本仓库中，也不受本目录许可证重新授权。
+本目录及其中的 Skill 使用 [MIT License](./LICENSE)。官方 `lark-cli` 是外部依赖，不包含在本仓库中，也不受本目录许可证重新授权。

@@ -11,7 +11,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SYNC_SKILL = ROOT / "skills" / "feishu-skill-sync"
-CLI_SKILL = ROOT / "skills" / "feishu-cli"
 ENTRY_POINT = SYNC_SKILL / "scripts" / "skill_sync.py"
 FORBIDDEN_NAMES = {".DS_Store", ".env", "library.json"}
 
@@ -49,7 +48,6 @@ def main() -> int:
     )
     run([sys.executable, "-m", "compileall", "-q", str(SYNC_SKILL / "scripts")])
     run([sys.executable, str(ENTRY_POINT), "inspect", str(SYNC_SKILL)])
-    run([sys.executable, str(ENTRY_POINT), "inspect", str(CLI_SKILL)])
     if shutil.which("ruff"):
         run(["ruff", "check", str(SYNC_SKILL / "scripts"), str(SYNC_SKILL / "tests")])
     print("All local checks passed. No Feishu network write was performed.")

@@ -7,7 +7,7 @@
 | 目录 | 内容 | 使用方式 |
 | --- | --- | --- |
 | [`3D-memory-courtyard/`](./3D-memory-courtyard/) | 用 AI 生成“记忆小院”3D 互动相册的完整提示词 | 阅读并复制 `prompt.md` |
-| [`feishu-skill-hub/`](./feishu-skill-hub/) | 用飞书知识库集中发布、拉取和更新 Agent Skills | 安装 `feishu-cli` 与 `feishu-skill-sync` |
+| [`feishu-skill-hub/`](./feishu-skill-hub/) | 用飞书知识库集中发布、拉取和更新 Agent Skills | 安装 `feishu-skill-sync` |
 
 ## 使用原则
 
