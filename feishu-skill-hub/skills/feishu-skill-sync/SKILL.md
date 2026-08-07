@@ -2,7 +2,7 @@
 name: feishu-skill-sync
 description: 在飞书知识库中自动发现、绑定、发布、比较和拉取标准 Agent Skill 文件夹，并管理同一 CLI 下多个独立飞书 OAuth 身份。适用于 Codex、OpenClaw、Hermes、Coze 等可运行 Python 与 lark-cli 的 Agent；缺少官方 CLI 时先检查 feishu-cli 辅助 Skill，存在则协作安装和配置，不存在则返回可直接展示的安装引导；OAuth 由本 Skill 统一发起，绑定后复用本地缓存，一个或多个 Skills 始终共用一份版本计划和一次写入确认。
 metadata:
-  version: "0.20.1"
+  version: "0.20.2"
 ---
 
 # 飞书AgentSkill同步
@@ -54,16 +54,16 @@ python3 scripts/skill_sync.py pull --skills-dir "<当前 Agent 的标准 Skills 
 
 ### 一次性授权范围
 
-`library authorize` 不使用 `--domain`，只通过一个 `--scope` 请求同步脚本真实调用链所需的 11 项权限：
+`library authorize` 不使用 `--domain`，只通过一个 `--scope` 请求同步脚本真实调用链所需的 12 项权限：
 
 ```text
 auth:user.id:read offline_access
 docx:document:create docx:document:readonly docx:document:write_only
 drive:drive.metadata:readonly drive:file:download drive:file:upload
-wiki:node:retrieve wiki:node:update wiki:space:retrieve
+wiki:wiki:readonly wiki:node:retrieve wiki:node:update wiki:space:retrieve
 ```
 
-对应能力分别是身份校验与令牌刷新、页面创建/读取/覆盖、固定 ZIP 上传/下载/元数据读取、知识空间和节点发现及标题更新。`search:docs:read`、`space:document:retrieve`、`docs:document.media:upload` 以及复制、移动、成员管理、删除等 scope 不在真实调用链中，不得为了“可能以后使用”提前申请。
+对应能力分别是身份校验与令牌刷新、页面创建/读取/覆盖、固定 ZIP 上传/下载/元数据读取、知识空间和节点发现及标题更新。当前 lark-cli 元数据把 `wiki:space:retrieve` 声明为知识空间列表权限，但真实飞书服务端仍可能要求兼容只读权限 `wiki:wiki:readonly`；两项同时保留，确保首次绑定能够完成真实 `library discover`。不得改用含写能力的 `wiki:wiki`。`search:docs:read`、`space:document:retrieve`、`docs:document.media:upload` 以及复制、移动、成员管理、删除等 scope 不在真实调用链中，不得为了“可能以后使用”提前申请。
 
 飞书权限需先在应用后台可用，再由用户在同一授权页面一次授予。新增真实调用时，必须先依据官方 API 或当前 lark-cli 命令元数据确认精确 scope、更新上述集合并提升 Skill 版本；不得依靠动态业务域静默扩大授权。真实操作明确返回缺少新权限时，才对同一 Profile 再运行一次 `library authorize`。
 

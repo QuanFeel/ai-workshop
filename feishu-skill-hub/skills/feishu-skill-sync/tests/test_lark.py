@@ -337,6 +337,7 @@ class ProfileTests(unittest.TestCase):
                 "drive:drive.metadata:readonly",
                 "drive:file:download",
                 "drive:file:upload",
+                "wiki:wiki:readonly",
                 "wiki:node:retrieve",
                 "wiki:node:update",
                 "wiki:space:retrieve",
@@ -346,6 +347,11 @@ class ProfileTests(unittest.TestCase):
             len(lark.EXPLICIT_AUTH_SCOPES),
             len(set(lark.EXPLICIT_AUTH_SCOPES)),
         )
+
+    def test_wiki_discovery_compatibility_scope_is_read_only(self) -> None:
+        self.assertIn("wiki:wiki:readonly", lark.EXPLICIT_AUTH_SCOPES)
+        self.assertIn("wiki:space:retrieve", lark.EXPLICIT_AUTH_SCOPES)
+        self.assertNotIn("wiki:wiki", lark.EXPLICIT_AUTH_SCOPES)
 
     def test_completed_authorization_reports_minimum_scope_contract(self) -> None:
         account = lark.AccountInfo(

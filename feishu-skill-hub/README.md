@@ -136,7 +136,7 @@ python3 "$SYNC" pull \
 python3 scripts/verify.py
 ```
 
-它会运行 `feishu-skill-sync` 的单元测试、Python 编译、两个 Skill 的本地解析检查，以及可用时的 Ruff 检查。当前公开版本本地验证结果为 57 项测试通过。
+它会运行 `feishu-skill-sync` 的单元测试、Python 编译、两个 Skill 的本地解析检查，以及可用时的 Ruff 检查。当前公开版本本地验证结果为 58 项测试通过。
 
 真实飞书发布和拉取依赖用户自己的 Profile、权限和知识库，因此不会被自动测试伪装成已经联调成功。
 

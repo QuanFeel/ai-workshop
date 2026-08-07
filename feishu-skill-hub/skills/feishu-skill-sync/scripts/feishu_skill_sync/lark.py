@@ -34,6 +34,7 @@ EXPLICIT_AUTH_SCOPES = (
     "drive:drive.metadata:readonly",
     "drive:file:download",
     "drive:file:upload",
+    "wiki:wiki:readonly",
     "wiki:node:retrieve",
     "wiki:node:update",
     "wiki:space:retrieve",
