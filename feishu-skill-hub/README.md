@@ -10,6 +10,8 @@
 
 项目不包含飞书 CLI 可执行文件、App Secret、Token、Profile、知识库 Token 或任何本机缓存。
 
+本目录是 `feishu-skill-sync` 唯一的开源发布镜像，始终保留完整可安装文件；维护侧只从统一真源单向生成。Market Capture Bundle 也随包保存一份自动生成的完整分发镜像，两处都不是独立维护入口。
+
 ## 工作方式
 
 ```mermaid

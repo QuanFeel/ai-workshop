@@ -68,69 +68,25 @@ def lark_cli_available() -> bool:
     return shutil.which("lark-cli") is not None
 
 
-def feishu_cli_skill_installed() -> bool:
-    """Check common cross-agent locations for the optional helper Skill."""
-    candidates: list[Path] = []
-    configured_skill = os.environ.get("FEISHU_CLI_SKILL_DIR")
-    if configured_skill:
-        configured_path = Path(configured_skill).expanduser()
-        candidates.append(
-            configured_path
-            if configured_path.name == "SKILL.md"
-            else configured_path / "SKILL.md"
-        )
-    configured_roots = os.environ.get("AGENT_SKILLS_DIR")
-    if configured_roots:
-        candidates.extend(
-            Path(root).expanduser() / "feishu-cli" / "SKILL.md"
-            for root in configured_roots.split(os.pathsep)
-            if root
-        )
-    home = Path.home()
-    candidates.extend(
-        (
-            home / ".agents" / "skills" / "feishu-cli" / "SKILL.md",
-            home / ".codex" / "skills" / "feishu-cli" / "SKILL.md",
-            home / ".claude" / "skills" / "feishu-cli" / "SKILL.md",
-        )
-    )
-    return any(candidate.is_file() for candidate in candidates)
-
-
 def cli_setup_guidance() -> dict[str, Any]:
-    """Return a non-error handoff when lark-cli is not installed yet."""
-    helper_installed = feishu_cli_skill_installed()
-    if helper_installed:
-        message = (
-            "未检测到官方 lark-cli。请调用 $feishu-cli 协作完成安装、"
-            "基础配置和 Profile 创建，但不要运行通用 auth login。"
-            "完成后原样重试当前同步命令，由 library authorize 使用"
-            "真实调用链所需的最小 scope 集合发起唯一一次 OAuth。"
-        )
-        next_action = (
-            "调用 $feishu-cli，仅完成安装和基础配置；"
-            "不要授权；完成后原样重试当前同步命令"
-        )
-    else:
-        message = (
-            "未检测到官方 lark-cli，也未检测到 feishu-cli Skill。"
-            f"请先运行 `{LARK_CLI_INSTALL_COMMAND}`，安装后运行 "
-            "`lark-cli config init --new` 完成配置；再回到本 Skill，"
-            "由 library authorize 完成同步所需的 OAuth 授权。"
-        )
-        next_action = "按 message 中的命令安装和配置，然后原样重试当前同步命令"
+    """Return non-error setup guidance when lark-cli is not installed yet."""
+    message = (
+        "未检测到官方 lark-cli。"
+        f"请先运行 `{LARK_CLI_INSTALL_COMMAND}`，安装后运行 "
+        "`lark-cli config init --new` 完成配置；再回到本 Skill，"
+        "由 library authorize 完成同步所需的 OAuth 授权。"
+    )
     return {
         "ok": True,
         "action": "setup_required",
         "ready": False,
         "cli_installed": False,
-        "helper_skill_installed": helper_installed,
         "oauth_deferred_to_caller": True,
         "authorization_owner": "feishu-skill-sync",
         "install_command": LARK_CLI_INSTALL_COMMAND,
         "verify_command": "lark-cli --version",
         "message": message,
-        "next_action": next_action,
+        "next_action": "按 message 中的命令安装和配置，然后原样重试当前同步命令",
     }
 
 

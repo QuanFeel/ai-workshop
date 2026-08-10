@@ -61,13 +61,16 @@ def requires_lark_cli(args: argparse.Namespace) -> bool:
     }
 
 
-def bind_library_selection(args: argparse.Namespace, cwd: Path) -> LibraryInfo:
-    if args.account_label is not None:
+def validate_arguments(args: argparse.Namespace) -> None:
+    if getattr(args, "account_label", None) is not None:
         raise SyncError(
             "--account-label 已停用：账号描述或备注不能切换 OAuth 身份。"
             "请删除该参数，并通过 library profiles 选择独立且已授权的 "
             "--lark-profile；若目标 Profile 不存在，先创建 Profile 并完成 OAuth"
         )
+
+
+def bind_library_selection(args: argparse.Namespace, cwd: Path) -> LibraryInfo:
     if args.root:
         if args.knowledge_base or args.directory_path:
             raise SyncError(
@@ -75,7 +78,7 @@ def bind_library_selection(args: argparse.Namespace, cwd: Path) -> LibraryInfo:
             )
         return bind_library(args.root, cwd)
     if not args.knowledge_base and not args.directory_path:
-        return bind_default_library(cwd, args.account_label)
+        return bind_default_library(cwd)
     if not args.knowledge_base or not args.directory_path:
         raise SyncError(
             "--knowledge-base 与 --directory-path 必须同时提供；"
@@ -328,6 +331,7 @@ def main() -> int:
     args = build_parser().parse_args()
     set_pretty_output(args.pretty)
     try:
+        validate_arguments(args)
         if requires_lark_cli(args) and not lark_cli_available():
             emit(cli_setup_guidance())
             return 0

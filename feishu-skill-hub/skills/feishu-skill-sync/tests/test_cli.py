@@ -38,7 +38,6 @@ class CliSmokeTests(unittest.TestCase):
         environment["PATH"] = ""
         environment.pop("LARK_CLI_CMD", None)
         environment.pop("AGENT_SKILLS_DIR", None)
-        environment.pop("FEISHU_CLI_SKILL_DIR", None)
         return environment
 
     def test_compare(self) -> None:
@@ -188,7 +187,7 @@ class CliSmokeTests(unittest.TestCase):
         self.assertEqual(payload["source"], "local_cache")
         self.assertFalse(payload["remote_verified"])
 
-    def test_missing_cli_without_helper_returns_install_guidance(self) -> None:
+    def test_missing_cli_returns_install_guidance(self) -> None:
         with tempfile.TemporaryDirectory() as home:
             result = self.run_cli(
                 "library",
@@ -204,38 +203,48 @@ class CliSmokeTests(unittest.TestCase):
         self.assertNotIn("verified", payload)
         self.assertTrue(payload["oauth_deferred_to_caller"])
         self.assertEqual(payload["authorization_owner"], "feishu-skill-sync")
-        self.assertFalse(payload["helper_skill_installed"])
+        self.assertEqual(
+            set(payload),
+            {
+                "ok",
+                "action",
+                "ready",
+                "cli_installed",
+                "oauth_deferred_to_caller",
+                "authorization_owner",
+                "install_command",
+                "verify_command",
+                "message",
+                "next_action",
+            },
+        )
         self.assertEqual(
             payload["install_command"],
             "npx @larksuite/cli@latest install",
         )
-        self.assertIn("未检测到 feishu-cli Skill", payload["message"])
+        self.assertIn("未检测到官方 lark-cli", payload["message"])
+        self.assertIn("lark-cli config init --new", payload["message"])
 
-    def test_missing_cli_hands_off_to_installed_helper_skill(self) -> None:
+    def test_all_remote_commands_return_setup_guidance_without_cli(self) -> None:
         with tempfile.TemporaryDirectory() as home:
-            helper = Path(home) / ".agents" / "skills" / "feishu-cli"
-            helper.mkdir(parents=True)
-            (helper / "SKILL.md").write_text(
-                "---\nname: feishu-cli\ndescription: test\n---\n",
-                encoding="utf-8",
+            environment = self.missing_cli_environment(home)
+            commands = (
+                ("library", "profiles"),
+                ("library", "authorize", "--lark-profile", "test-profile"),
+                ("library", "discover", "--lark-profile", "test-profile"),
+                ("list",),
+                ("publish", "--source", str(SKILL_DIR), "--notes", "test"),
+                ("pull", "--skills-dir", str(Path(home) / "skills")),
             )
-            result = self.run_cli(
-                "list",
-                env=self.missing_cli_environment(home),
-            )
-        self.assertEqual(result.returncode, 0, result.stderr)
-        payload = json.loads(result.stdout)
-        self.assertTrue(payload["ok"])
-        self.assertEqual(payload["action"], "setup_required")
-        self.assertFalse(payload["ready"])
-        self.assertNotIn("error", payload)
-        self.assertNotIn("verified", payload)
-        self.assertTrue(payload["oauth_deferred_to_caller"])
-        self.assertEqual(payload["authorization_owner"], "feishu-skill-sync")
-        self.assertIn("不要授权", payload["next_action"])
-        self.assertIn("不要运行通用 auth login", payload["message"])
-        self.assertTrue(payload["helper_skill_installed"])
-        self.assertIn("$feishu-cli", payload["message"])
+            for command in commands:
+                with self.subTest(command=command):
+                    result = self.run_cli(*command, env=environment)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    payload = json.loads(result.stdout)
+                    self.assertTrue(payload["ok"])
+                    self.assertEqual(payload["action"], "setup_required")
+                    self.assertFalse(payload["ready"])
+                    self.assertFalse(payload["cli_installed"])
 
 
 if __name__ == "__main__":

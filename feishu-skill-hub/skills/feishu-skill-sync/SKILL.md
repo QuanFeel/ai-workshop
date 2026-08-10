@@ -1,8 +1,8 @@
 ---
 name: feishu-skill-sync
-description: 在飞书知识库中自动发现、绑定、发布、比较和拉取标准 Agent Skill 文件夹，并管理同一 CLI 下多个独立飞书 OAuth 身份。适用于 Codex、OpenClaw、Hermes、Coze 等可运行 Python 与 lark-cli 的 Agent；缺少官方 CLI 时先检查 feishu-cli 辅助 Skill，存在则协作安装和配置，不存在则返回可直接展示的安装引导；OAuth 由本 Skill 统一发起，绑定后复用本地缓存，一个或多个 Skills 始终共用一份版本计划和一次写入确认。
+description: 在飞书知识库中自动发现、绑定、发布、比较和拉取标准 Agent Skill 文件夹，并管理同一 CLI 下多个独立飞书 OAuth 身份。适用于 Codex、OpenClaw、Hermes、Coze 等可运行 Python 与 lark-cli 的 Agent；缺少官方 CLI 时直接返回可展示的官方安装和配置引导；OAuth 由本 Skill 统一发起，绑定后复用本地缓存，一个或多个 Skills 始终共用一份版本计划和一次写入确认。
 metadata:
-  version: "0.20.2"
+  version: "0.21.0"
 ---
 
 # 飞书AgentSkill同步
@@ -37,8 +37,7 @@ python3 scripts/skill_sync.py pull --skills-dir "<当前 Agent 的标准 Skills 
 
 需要访问飞书的命令会先检查官方 `lark-cli`。未安装时脚本返回 `ok: true`、`action: setup_required`、`ready: false`，这是可继续处理的安装前置状态，不得向用户报告同步失败。
 
-- `helper_skill_installed: true`：立即调用 `$feishu-cli`，但只完成官方 CLI 安装、基础配置和必要的 Profile 创建，不运行通用 `auth login`。然后原样重试当前同步命令，由本 Skill 的 `library authorize` 使用真实调用链所需的最小 scope 集合发起唯一一次 OAuth。脚本同时返回 `oauth_deferred_to_caller: true` 和 `authorization_owner: feishu-skill-sync`，Agent 不得让辅助 Skill 抢先授权。
-- `helper_skill_installed: false`：直接向用户展示脚本的 `message` 和 `install_command`，引导安装；不要报技术错误，不要假装已经安装，也不要编造另一个 Skill。
+直接向用户展示脚本的 `message` 和 `install_command`，引导安装官方 CLI 并运行 `lark-cli config init --new`；不要报技术错误，不要假装已经安装，也不要要求用户安装第二个 Skill。安装配置完成后原样重试当前同步命令，由本 Skill 的 `library authorize` 使用真实调用链所需的最小 scope 集合发起唯一一次 OAuth。
 
 `library show`、`library clear`、`inspect` 和 `compare` 是本地命令，不因缺少 CLI 而中断。不要绕过脚本自行判断 CLI，也不要在仓库中捆绑可执行文件、机器绝对路径或凭据。
 
@@ -46,7 +45,7 @@ python3 scripts/skill_sync.py pull --skills-dir "<当前 Agent 的标准 Skills 
 
 `library profiles` 的 `token_status` 只是 CLI 状态线索，不能单独证明用户未授权。状态为 `needs_refresh` 时，脚本同时返回 `token_status_is_advisory: true`、`reauthorization_required: false` 和 `next_action: try_read_only_discover`；Agent 必须遵循这些机器字段，不得根据状态文字或过期时间自行要求扫码。选定已有 Profile 后，先对该 Profile 运行只读的 `library discover`，让 lark-cli 在真实请求中处理令牌刷新。成功则直接继续绑定；只有飞书明确返回 Token 失效、OAuth 未完成或缺少必需权限时，才对同一 Profile 运行 `library authorize`，不新建 Profile。
 
-只有用户明确确认现有候选都不是、目标是新身份，才用一个新 Profile 运行 `library authorize`。不要因为关键词没有完全命中就直接创建，也不要继续要求用户核对已排除的 Open ID。除缺少 CLI 时调用 `$feishu-cli` 完成安装和基础配置外，不要调用其他飞书业务 Skill 绕过同步脚本。新 Profile 由脚本转交给官方 `lark-cli config init --new --name <profile>`，创建一套唯一 App ID 的新应用与 Profile；`lark-cli` 禁止两个 Profile 复用同一 App ID，不得复制旧 Profile 凭据。
+只有用户明确确认现有候选都不是、目标是新身份，才用一个新 Profile 运行 `library authorize`。不要因为关键词没有完全命中就直接创建，也不要继续要求用户核对已排除的 Open ID。不要调用其他飞书业务 Skill 绕过同步脚本。新 Profile 由脚本转交给官方 `lark-cli config init --new --name <profile>`，创建一套唯一 App ID 的新应用与 Profile；`lark-cli` 禁止两个 Profile 复用同一 App ID，不得复制旧 Profile 凭据。
 
 `config init --new` 会持续输出配置 URL 并等待用户在网页完成新应用创建。在 Agent 的可持续执行会话或后台任务中运行，把 URL 原样给用户；不要因短超时重启，不要同时启动第二次初始化。配置完成后，再次运行相同的 `library authorize --lark-profile <profile>` 发起 OAuth。
 
@@ -107,4 +106,4 @@ Profile 是实际 CLI 路由，Open ID 是实际 OAuth 用户指纹；两者都�
 - 本地拉取目标由运行本 Skill 的 Agent 选择其标准 Skills 根目录并传入 `--skills-dir`；脚本不设平台默认路径，也不将本地目录写入中央库缓存。
 - 脚本校验包结构、固定文件节点、危险路径和版本门禁；不修改源 Skill，不自动提升版本，打包时排除 `tests/`。
 
-已安装 `lark-cli` 时直接使用；未安装时返回非错误的安装前置状态，优先转交 `$feishu-cli`，否则输出官方安装文字。新 Profile 的应用凭据由官方 `config init --new` 管理，同步脚本不读取、复制或输出 App Secret。缓存默认位于 `~/.cache/feishu-skill-sync/library.json`，仅保存 CLI Profile、`open_id`、`tenant_key` 和目录标识，不保存凭据；后续直接复用，不主动重新验证。旧协议、用户主动切号、授权失效或位置失效时重新绑定。删除、回滚、降级和未确认写入不属于本流程。
+已安装 `lark-cli` 时直接使用；未安装时返回非错误的安装前置状态和官方安装配置文字。新 Profile 的应用凭据由官方 `config init --new` 管理，同步脚本不读取、复制或输出 App Secret。缓存默认位于 `~/.cache/feishu-skill-sync/library.json`，仅保存 CLI Profile、`open_id`、`tenant_key` 和目录标识，不保存凭据；后续直接复用，不主动重新验证。旧协议、用户主动切号、授权失效或位置失效时重新绑定。删除、回滚、降级和未确认写入不属于本流程。
