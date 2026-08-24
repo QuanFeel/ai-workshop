@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Codex 周额度</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Codex 周额度</h1>
+        <div class="muted" id="time">正在读取本机 Codex 额度…</div>
+      </header>
+      <nav class="tabs" aria-label="数据分类">
+        <button class="tab active" type="button" data-tab="quota">
+          额度预算</button
+        ><button class="tab" type="button" data-tab="saving">
+          省 Token 建议
+        </button>
+      </nav>
+      <section class="tab-panel" id="tabQuota">
+        <article class="card quota-card">
+          <div>
+            <div class="muted">剩余周额度（实际）</div>
+            <div class="value" id="remaining">—</div>
+            <div class="muted" id="syncInfo">本机 Codex 自动读取</div>
+          </div>
+          <div class="quota-meta">
+            <span class="quota-pill" id="usedQuota">已用：—</span
+            ><span class="quota-pill" id="officialReset">下次重置：—</span>
+          </div>
+        </article>
+        <div class="plan-controls">
+          <button class="ghost" type="button" id="toggleEstimate">
+            预计重置日
+          </button>
+          <form class="planner" id="planner" hidden>
+            <input
+              type="date"
+              id="resetDate"
+              required
+              aria-label="预计重置日期"
+            /><input
+              type="time"
+              id="resetTime"
+              required
+              aria-label="预计重置时间"
+            /><button class="primary" type="submit">应用</button>
+          </form>
+          <button class="ghost" type="button" id="restoreOfficial" hidden>
+            恢复官方重置</button
+          ><span class="hint" id="saveState" aria-live="polite"></span>
+        </div>
+        <section class="calendar-section">
+          <div class="section-head">
+            <h2 id="currentLabel">当前周期</h2>
+            <span class="hint"
+              >已过日期固定并置灰；预算基准 100% · 工作日 2 : 周末 1</span
+            >
+          </div>
+          <div class="calendar" id="currentCalendar"></div>
+        </section>
+        <section class="calendar-section" id="nextCycle" hidden>
+          <div class="section-head">
+            <h2 id="nextLabel">下一个周期</h2>
+            <span class="hint">从预计重置日期和时间开始</span>
+          </div>
+          <div class="calendar" id="nextCalendar"></div>
+        </section>
+        <div class="notice">
+          预计重置和恢复官方重置只保存在当前浏览器，不会修改 Codex
+          实际额度或官方重置时间。
+        </div>
+      </section>
+      <section class="tab-panel" id="tabSaving" hidden>
+        <article class="saving-panel">
+          <div class="saving-head">
+            <div>
+              <h2>省 Token 建议</h2>
+              <div class="muted">仅保存在当前浏览器</div>
+            </div>
+            <div class="tip-actions">
+              <span class="hint" id="tipCount"></span
+              ><button class="ghost" type="button" id="addTip">
+                + 新增建议
+              </button>
+            </div>
+          </div>
+          <div class="tips" id="tips"></div>
+          <div class="md-box">
+            <div class="md-head">
+              <div>
+                <h3>可编辑 AGENTS.md Prompt</h3>
+                <div class="hint">保存位置由使用者自行决定</div>
+              </div>
+              <div class="md-actions">
+                <button class="ghost" type="button" id="savePrompt">
+                  保存 Markdown</button
+                ><button class="ghost" type="button" id="copyPrompt">
+                  复制 Markdown
+                </button>
+              </div>
+            </div>
+            <textarea
+              id="promptInput"
+              aria-label="可编辑 AGENTS.md Markdown Prompt"
+              spellcheck="false"
+            ></textarea>
+            <div class="hint">
+              编辑后点击“保存 Markdown”才会保存到当前浏览器。
+            </div>
+          </div>
+          <div
+            class="save-result hint"
+            id="tipsSaveState"
+            aria-live="polite"
+          ></div>
+        </article>
+      </section>
+    </main>
+    <script src="app.js" defer></script>
+  </body>
+</html>
