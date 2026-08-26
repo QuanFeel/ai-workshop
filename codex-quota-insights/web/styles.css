@@ -38,6 +38,9 @@ h1 {
   line-height: 1.1;
   margin: 0 0 7px;
 }
+header {
+  margin-bottom: 16px;
+}
 h2,
 h3 {
   margin: 0;
@@ -58,7 +61,7 @@ h3 {
   flex-wrap: wrap;
 }
 .tabs {
-  margin: 20px 0;
+  margin: 0 0 20px;
 }
 .plan-controls {
   margin-top: 14px;
@@ -153,8 +156,10 @@ button.ghost {
 }
 .calendar {
   display: grid;
-  grid-template-columns: repeat(8, minmax(132px, 1fr));
+  grid-template-columns: repeat(8, minmax(152px, 1fr));
   gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 8px;
 }
 .day {
   min-height: 146px;
@@ -205,6 +210,7 @@ button.ghost {
   color: #b7c6e8;
   font-size: 12px;
   white-space: nowrap;
+  letter-spacing: -0.03em;
 }
 .metric {
   margin-top: 8px;
@@ -263,6 +269,23 @@ button.ghost {
   height: 34px;
   padding: 0 11px;
 }
+.saving-head > .tip-actions,
+.tip-head > .tip-actions {
+  align-items: center;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+.tip-head > .edit-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.tip-head > .tip-actions button {
+  flex: 0 0 auto;
+}
+#tipCount {
+  white-space: nowrap;
+}
 .delete {
   color: #ffb3b3;
 }
@@ -315,5 +338,15 @@ button.ghost {
   .md-head {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+@media (max-width: 620px) {
+  .tip-head {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+  .tip-head > .tip-actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 }
