@@ -15,11 +15,6 @@
           link: "",
         },
         {
-          title: "省约 50% Token 的 AGENTS.md 方法",
-          body: "对未知或可能很大的命令输出设置字节上限，减少无关内容进入上下文。",
-          link: "https://www.reddit.com/r/codex/comments/1t6iulo/i_cut_codex_token_usage_50_with_one_agentsmd_rule/",
-        },
-        {
           title: "RTK 命令输出压缩工具",
           body: "Rust Token Killer：在命令输出进入模型上下文前进行过滤与压缩。",
           link: "https://github.com/rtk-ai/rtk",
@@ -38,7 +33,7 @@
         },
       ],
       prompt:
-        "## Subagent Usage\n\n- 默认少开 subagent。\n- 开启任何 subagent 前，必须先询问并获得明确确认。\n\n## Command Output\n\nProtect context usage. **Any command with unknown or potentially large output must be byte-capped.**\n\nDefault pattern:\n\n```bash\nCOMMAND 2>&1 | head -c 4000\n```",
+        "## Subagent Usage\n\n- 默认少开 subagent。\n- 开启任何 subagent 前，必须先询问并获得明确确认。",
     };
   const read = (key, fallback) => {
       try {
@@ -116,15 +111,18 @@
     return early * 0.25 + normal;
   };
   const savedTips = read(TIPS_KEY, null),
-    isLegacyDefaultTips =
+    savedTipTitles = Array.isArray(savedTips?.rules)
+      ? savedTips.rules.map((rule) => rule.title).join("|")
+      : "",
+    isManagedDefaultTips =
       Array.isArray(savedTips?.rules) &&
-      savedTips.rules.length === 4 &&
-      savedTips.rules.map((rule) => rule.title).join("|") ===
-        "模型与速度|少开 subagent|限制命令输出|RTK 命令输出压缩工具";
-  if (isLegacyDefaultTips) put(TIPS_KEY, defaultTips);
+      (savedTipTitles === "模型与速度|少开 subagent|限制命令输出|RTK 命令输出压缩工具" ||
+        savedTipTitles === "模型与速度|少开 subagent|省约 50% Token 的 AGENTS.md 方法|RTK 命令输出压缩工具" ||
+        savedTipTitles === "模型与速度|少开 subagent|RTK 命令输出压缩工具");
+  if (isManagedDefaultTips) put(TIPS_KEY, defaultTips);
   let quota = null,
     plan = read(PLAN_KEY, {}),
-    tips = isLegacyDefaultTips ? defaultTips : savedTips || defaultTips,
+    tips = isManagedDefaultTips ? defaultTips : savedTips || defaultTips,
     editing = null;
   function segments(start, end) {
     const days = [];
