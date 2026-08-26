@@ -77,6 +77,17 @@
     weekday = (date) =>
       new Intl.DateTimeFormat("zh-CN", { weekday: "short" }).format(date),
     weekend = (date) => date.getDay() === 0 || date.getDay() === 6;
+  const weightedMinutes = (from, to) => {
+    const sleepEnd = new Date(
+        from.getFullYear(),
+        from.getMonth(),
+        from.getDate(),
+        7,
+      ),
+      early = Math.max(0, Math.min(to, sleepEnd) - from) / 60_000,
+      normal = Math.max(0, to - Math.max(from, sleepEnd)) / 60_000;
+    return early * 0.25 + normal;
+  };
   let quota = null,
     plan = read(PLAN_KEY, {}),
     tips = read(TIPS_KEY, defaultTips),
@@ -131,17 +142,58 @@
       second.budget = Math.floor(total / 2);
     }
   }
+  function balanceSplitBoundary(rows) {
+    const first = rows.findIndex((row) => row.active > 0),
+      last = rows.findLastIndex((row) => row.active > 0);
+    if (first < 0 || first === last || rows[first].day.getDay() !== rows[last].day.getDay()) return;
+    if (rows[first].active === 1440 && rows[last].active === 1440) return;
+
+    const boundaryWeekend = weekend(rows[first].day),
+      fullWeekdays = rows.filter((row, index) => index !== first && index !== last && !weekend(row.day) && row.active === 1440),
+      fullWeekendPeers = rows.filter((row, index) => index !== first && index !== last && weekend(row.day) && row.active === 1440),
+      weekendCandidates = rows
+        .filter((row, index) => index !== first && index !== last && weekend(row.day) && row.active > 0)
+        .sort((left, right) => (right.day.getDay() === 0) - (left.day.getDay() === 0) || right.budget - left.budget);
+    let target, candidates, weekendTotal;
+    if (boundaryWeekend) {
+      if (!fullWeekdays.length || !fullWeekendPeers.length) return;
+      const weekdayTarget = Math.round((100 * 2) / (5 * 2 + 2));
+      fullWeekdays.forEach((row) => (row.budget = weekdayTarget));
+      weekendTotal = 100 - fullWeekdays.reduce((sum, row) => sum + row.budget, 0);
+      target = rows[first].day.getDay() === 6 ? Math.ceil(weekendTotal / 2) : Math.floor(weekendTotal / 2);
+      candidates = fullWeekendPeers;
+    } else {
+      if (!fullWeekdays.length || !weekendCandidates.length) return;
+      target = Math.round(fullWeekdays.reduce((sum, row) => sum + row.budget, 0) / fullWeekdays.length);
+      candidates = weekendCandidates;
+    }
+    let delta = target - rows[first].budget - rows[last].budget;
+    for (const row of candidates) {
+      if (!delta) break;
+      if (delta > 0 && row.budget > 0) {
+        row.budget -= 1;
+        rows[last].budget += 1;
+        delta -= 1;
+      } else if (delta < 0 && rows[last].budget > 0) {
+        row.budget += 1;
+        rows[last].budget -= 1;
+        delta += 1;
+      }
+    }
+    if (boundaryWeekend && candidates.length === 1) candidates[0].budget = weekendTotal - target;
+  }
   function fixedRows(start, end, total = 100) {
     const { days, parts } = segments(start, end),
       rows = days.map((day, index) => ({ day, ...parts[index] }));
     rows.forEach(
-      (row) => (row.weight = row.active * (weekend(row.day) ? 1 : 2)),
+      (row) => (row.weight = weightedMinutes(row.from, row.to) * (weekend(row.day) ? 1 : 2)),
     );
     const shares = rounded(
       rows.map((row) => row.weight),
       total,
     );
     rows.forEach((row, index) => (row.budget = shares[index]));
+    balanceSplitBoundary(rows);
     balanceWeekend(rows);
     const drift = total - rows.reduce((sum, row) => sum + row.budget, 0),
       tail = [...rows].reverse().find((row) => row.budget > 0);
@@ -160,20 +212,34 @@
   function projection() {
     const officialReset = new Date(quota.resetsAtIso),
       now = new Date(),
-      officialStart = addDays(dayStart(officialReset), -7);
+      // 精确从上一次官方重置时刻开始，而不是从七天前的 00:00 开始。
+      // 例如 8/25 22:50 重置时，首日只计 22:50–24:00。
+      officialStart = new Date(
+        officialReset.getTime() -
+          (Number(quota.windowDurationMins) || 7 * 24 * 60) * 60_000,
+      );
     if (plan.mode === "estimate") {
       const selected = new Date(plan.reset);
       if (selected > now && selected <= officialReset) {
+        // 预计重置在应用时冻结：起点和可分配总额都不随后续自动刷新变化。
+        if (!plan.allocationStart || !Number.isFinite(Number(plan.allocationBudget))) {
+          plan = {
+            ...plan,
+            allocationStart: now.toISOString(),
+            allocationBudget: quota.remainingPercent,
+          };
+          put(PLAN_KEY, plan);
+        }
+        const allocationStart = new Date(plan.allocationStart),
+          allocationBudget = Math.max(0, Math.min(100, Number(plan.allocationBudget))),
+          start = Number.isFinite(allocationStart.getTime()) && allocationStart < selected
+            ? allocationStart
+            : now,
+          budget = Number.isFinite(allocationBudget) ? allocationBudget : quota.remainingPercent;
         const old = fixedRows(officialStart, officialReset),
-          today = dayStart(now),
-          past = old.filter((row) => row.day < today),
-          spent = past.reduce((sum, row) => sum + row.budget, 0),
-          future = fixedRows(today, selected, 100 - spent);
-        let remain = 100;
-        const current = [...past, ...future].map((row) => ({
-          ...row,
-          remain: (remain = Math.max(0, remain - row.budget)),
-        }));
+          past = old.filter((row) => row.day < dayStart(start)),
+          future = fixedRows(start, selected, budget),
+          current = [...past, ...future];
         return {
           mode: "estimate",
           start: officialStart,
@@ -368,7 +434,12 @@
       tipMessage("请选择当前时刻到官方重置时间之间的日期和时间", true);
       return;
     }
-    plan = { mode: "estimate", reset: selected.toISOString() };
+    plan = {
+      mode: "estimate",
+      reset: selected.toISOString(),
+      allocationStart: new Date().toISOString(),
+      allocationBudget: quota.remainingPercent,
+    };
     put(PLAN_KEY, plan);
     $("planner").hidden = true;
     renderQuota();

@@ -5,6 +5,8 @@ import readline from "node:readline";
 import { fileURLToPath } from "node:url";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
+const SLEEP_END_HOUR = 7;
+const EARLY_HOUR_WEIGHT = 0.25;
 
 function parseArgs(argv) {
   const options = {
@@ -168,6 +170,62 @@ function localDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
+function weightedLocalMinutes(start, end) {
+  const sleepEnd = new Date(start.getFullYear(), start.getMonth(), start.getDate(), SLEEP_END_HOUR);
+  const earlyMinutes = Math.max(0, Math.min(end.getTime(), sleepEnd.getTime()) - start.getTime()) / 60_000;
+  const normalMinutes = Math.max(0, end.getTime() - Math.max(start.getTime(), sleepEnd.getTime())) / 60_000;
+  return earlyMinutes * EARLY_HOUR_WEIGHT + normalMinutes;
+}
+
+function balanceSplitBoundaryDay(days) {
+  const first = days.findIndex((day) => day.activeMinutes > 0);
+  const last = days.findLastIndex((day) => day.activeMinutes > 0);
+  if (first < 0 || first === last || days[first].weekday !== days[last].weekday) return;
+  if (days[first].activeMinutes === 1440 && days[last].activeMinutes === 1440) return;
+
+  const boundaryWeekend = days[first].weekend;
+  const fullWeekdays = days.filter((day, index) => index !== first && index !== last && !day.weekend && day.activeMinutes === 1440);
+  const fullWeekendPeers = days.filter((day, index) => index !== first && index !== last && day.weekend && day.activeMinutes === 1440);
+  const weekendCandidates = days
+    .map((day, index) => ({ day, index }))
+    .filter(({ day, index }) => index !== first && index !== last && day.weekend && day.activeMinutes > 0)
+    // 差额优先放在周日，保证周六最多比周日多 1%。
+    .sort((left, right) => (right.day.weekday === 0) - (left.day.weekday === 0)
+      || right.day.budgetPercent - left.day.budgetPercent);
+
+  let target;
+  let candidates;
+  let weekendTotal;
+  if (boundaryWeekend) {
+    if (!fullWeekdays.length || !fullWeekendPeers.length) return;
+    // 一个完整周固定为 5 个工作日 + 2 个周末日：工作日 17%，周六 8%、周日 7%。
+    const weekdayTarget = Math.round((100 * 2) / (5 * 2 + 2));
+    fullWeekdays.forEach((day) => { day.budgetPercent = weekdayTarget; });
+    weekendTotal = 100 - fullWeekdays.reduce((sum, day) => sum + day.budgetPercent, 0);
+    target = days[first].weekday === 6 ? Math.ceil(weekendTotal / 2) : Math.floor(weekendTotal / 2);
+    candidates = fullWeekendPeers.map((day) => ({ day, index: days.indexOf(day) }));
+  } else {
+    if (!fullWeekdays.length || !weekendCandidates.length) return;
+    target = Math.round(fullWeekdays.reduce((sum, day) => sum + day.budgetPercent, 0) / fullWeekdays.length);
+    candidates = weekendCandidates;
+  }
+
+  let delta = target - (days[first].budgetPercent + days[last].budgetPercent);
+  for (const { day } of candidates) {
+    if (!delta) break;
+    if (delta > 0 && day.budgetPercent > 0) {
+      day.budgetPercent -= 1;
+      days[last].budgetPercent += 1;
+      delta -= 1;
+    } else if (delta < 0 && days[last].budgetPercent > 0) {
+      day.budgetPercent += 1;
+      days[last].budgetPercent -= 1;
+      delta += 1;
+    }
+  }
+  if (boundaryWeekend && candidates.length === 1) candidates[0].day.budgetPercent = weekendTotal - target;
+}
+
 export function buildBudgetPlan(window, now = new Date()) {
   const reset = new Date(window.resetsAt * 1000);
   const cycleStart = new Date(reset.getTime() - window.windowDurationMins * 60_000);
@@ -177,8 +235,8 @@ export function buildBudgetPlan(window, now = new Date()) {
     const next = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 1);
     const overlapStart = Math.max(cursor.getTime(), cycleStart.getTime());
     const overlapEnd = Math.min(next.getTime(), reset.getTime());
-    const overlapFraction = Math.max(0, overlapEnd - overlapStart) / (next.getTime() - cursor.getTime());
-    if (overlapFraction > 0) {
+    const activeMinutes = Math.max(0, overlapEnd - overlapStart) / 60_000;
+    if (activeMinutes > 0) {
       const weekend = cursor.getDay() === 0 || cursor.getDay() === 6;
       weightedDays.push({
         date: localDateKey(cursor),
@@ -186,7 +244,9 @@ export function buildBudgetPlan(window, now = new Date()) {
         weekend,
         periodStartIso: new Date(overlapStart).toISOString(),
         periodEndIso: new Date(overlapEnd).toISOString(),
-        weight: (weekend ? 1 : 2) * overlapFraction,
+        activeMinutes,
+        // 0:00–7:00 仍计入，但按正常时段 25% 权重折算。
+        weight: (weekend ? 1 : 2) * weightedLocalMinutes(new Date(overlapStart), new Date(overlapEnd)),
       });
     }
     cursor = next;
@@ -201,18 +261,20 @@ export function buildBudgetPlan(window, now = new Date()) {
     .sort((left, right) => right.fraction - left.fraction || left.index - right.index);
   const bonus = new Set(remainderOrder.slice(0, remainder).map((item) => item.index));
 
-  let plannedRemaining = 100;
-  const days = raw.map((day, index) => {
-    const budgetPercent = Math.floor(day.rawBudget) + (bonus.has(index) ? 1 : 0);
-    plannedRemaining -= budgetPercent;
-    return {
+  const days = raw.map((day, index) => ({
       date: day.date,
       weekend: day.weekend,
+      weekday: day.weekday,
       periodStartIso: day.periodStartIso,
       periodEndIso: day.periodEndIso,
-      budgetPercent,
-      plannedRemainingAfterDayPercent: plannedRemaining,
-    };
+      activeMinutes: day.activeMinutes,
+      budgetPercent: Math.floor(day.rawBudget) + (bonus.has(index) ? 1 : 0),
+    }));
+  balanceSplitBoundaryDay(days);
+  let plannedRemaining = 100;
+  days.forEach((day) => {
+    plannedRemaining -= day.budgetPercent;
+    day.plannedRemainingAfterDayPercent = plannedRemaining;
   });
 
   const todayKey = localDateKey(now);
