@@ -248,6 +248,38 @@ button.ghost {
   color: var(--cyan);
   word-break: break-all;
 }
+.effect-note,
+.examples {
+  margin-top: 10px;
+  color: #a8c7e3;
+  font-size: 13px;
+}
+.effect-note {
+  color: var(--muted);
+}
+.effects {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.effect {
+  padding: 10px;
+  border-radius: 10px;
+  background: #101a2f;
+}
+.effect b,
+.effect span {
+  display: block;
+}
+.effect b {
+  color: #45e4c2;
+}
+.effect span {
+  white-space: nowrap;
+  font-size: 13px;
+  letter-spacing: -0.02em;
+}
 .edit-input,
 .edit-body {
   width: 100%;

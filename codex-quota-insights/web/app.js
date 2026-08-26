@@ -6,27 +6,39 @@
       rules: [
         {
           title: "模型与速度",
-          body: "普通任务优先合适的模型、High 与 Standard，避免不必要的 Extra High。",
+          body: "默认使用 GPT-5.6 Sol；推荐使用 High，尽量不用 xhigh（Extra High）；Speed 使用 Standard。\n确定任务或者额度较低时，推荐使用 GPT-5.6 Terra / Luna，计费便宜很多，耐用。",
           link: "",
         },
         {
           title: "少开 subagent",
-          body: "默认少开 subagent；确实需要并行时，先说明分工和成本。",
+          body: "默认少开 subagent；确实需要开启时，必须先询问并获得明确确认。",
           link: "",
         },
         {
-          title: "限制命令输出",
-          body: "为未知或可能很大的命令输出设置字节上限。",
-          link: "",
+          title: "省约 50% Token 的 AGENTS.md 方法",
+          body: "对未知或可能很大的命令输出设置字节上限，减少无关内容进入上下文。",
+          link: "https://www.reddit.com/r/codex/comments/1t6iulo/i_cut_codex_token_usage_50_with_one_agentsmd_rule/",
         },
         {
           title: "RTK 命令输出压缩工具",
-          body: "Rust Token Killer：在命令输出进入模型上下文前过滤和压缩。",
+          body: "Rust Token Killer：在命令输出进入模型上下文前进行过滤与压缩。",
           link: "https://github.com/rtk-ai/rtk",
+          effectNote:
+            "以下均为 Bash 命令输出减少比例，不等于 Codex 总 Token 或周额度同比减少。",
+          effects: [
+            { ratio: "60–90%", label: "常见开发命令 · 官方整体口径" },
+            { ratio: "约 90%", label: "pytest / Go / Cargo / 通用测试" },
+            { ratio: "约 80%", label: "Cargo build / clippy / Ruff" },
+            { ratio: "约 85%", label: "golangci-lint" },
+            { ratio: "约 75%", label: "SBT compile" },
+            { ratio: "60%+", label: "RSpec / RuboCop" },
+          ],
+          examples:
+            "官方示例：ls 45 行 → 12 行（约少 73%） · git push 15 行 → 1 行（约少 93%） · cargo test 200+ 行 → 约 20 行（约少 90%）",
         },
       ],
       prompt:
-        "默认少开 subagent。\n\n未知或可能很大的命令输出使用：\nCOMMAND 2>&1 | head -c 4000",
+        "## Subagent Usage\n\n- 默认少开 subagent。\n- 开启任何 subagent 前，必须先询问并获得明确确认。\n\n## Command Output\n\nProtect context usage. **Any command with unknown or potentially large output must be byte-capped.**\n\nDefault pattern:\n\n```bash\nCOMMAND 2>&1 | head -c 4000\n```",
     };
   const read = (key, fallback) => {
       try {
@@ -55,6 +67,21 @@
       } catch {
         return "";
       }
+    },
+    effectsHtml = (rule) => {
+      const effects = Array.isArray(rule.effects) ? rule.effects : [];
+      if (!rule.effectNote && !effects.length && !rule.examples) return "";
+      return (
+        (rule.effectNote ? '<div class="effect-note">' + esc(rule.effectNote) + "</div>" : "") +
+        (effects.length
+          ? '<div class="effects">' +
+            effects
+              .map((effect) => '<div class="effect"><b>' + esc(effect.ratio) + "</b><span>" + esc(effect.label) + "</span></div>")
+              .join("") +
+            "</div>"
+          : "") +
+        (rule.examples ? '<div class="examples">' + esc(rule.examples) + "</div>" : "")
+      );
     },
     addDays = (date, count) => {
       const copy = new Date(date);
@@ -88,9 +115,16 @@
       normal = Math.max(0, to - Math.max(from, sleepEnd)) / 60_000;
     return early * 0.25 + normal;
   };
+  const savedTips = read(TIPS_KEY, null),
+    isLegacyDefaultTips =
+      Array.isArray(savedTips?.rules) &&
+      savedTips.rules.length === 4 &&
+      savedTips.rules.map((rule) => rule.title).join("|") ===
+        "模型与速度|少开 subagent|限制命令输出|RTK 命令输出压缩工具";
+  if (isLegacyDefaultTips) put(TIPS_KEY, defaultTips);
   let quota = null,
     plan = read(PLAN_KEY, {}),
-    tips = read(TIPS_KEY, defaultTips),
+    tips = isLegacyDefaultTips ? defaultTips : savedTips || defaultTips,
     editing = null;
   function segments(start, end) {
     const days = [];
@@ -388,6 +422,7 @@
                 esc(link) +
                 "</a>"
               : "") +
+            effectsHtml(rule) +
             "</article>"
           );
         })
