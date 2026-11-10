@@ -1,3 +1,5 @@
+> 此提示词已归类至 [prompts/3D-memory-courtyard/](../prompts/3D-memory-courtyard/prompt.md)，此处保留兼容副本。
+
 # 「记忆小院」3D 互动回忆相册 · 通用生成提示词
 
 > 用法：把下面 `=== 提示词开始 ===` 与 `=== 提示词结束 ===` 之间的全部内容，
