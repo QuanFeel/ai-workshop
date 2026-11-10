@@ -7,6 +7,7 @@
 | 目录 | 内容 | 使用方式 |
 | --- | --- | --- |
 | [`3D-memory-courtyard/`](./3D-memory-courtyard/) | 用 AI 生成“记忆小院”3D 互动相册的完整提示词 | 阅读并复制 `prompt.md` |
+| [`paper-time-pomodoro/`](./paper-time-pomodoro/) | 用 AI 生成“纸上时光番茄钟”本地演示的完整提示词 | 阅读并复制 [`prompt.md`](./paper-time-pomodoro/prompt.md) |
 | [`feishu-skill-hub/`](./feishu-skill-hub/) | 用飞书知识库集中发布、拉取和更新 Agent Skills | 安装 `feishu-skill-sync` |
 | [`codex-quota-insights/`](./codex-quota-insights/) | 读取真实 Codex 周额度、固定预算与 Token 活动摘要 | 安装插件或直接运行本地脚本 |
 
